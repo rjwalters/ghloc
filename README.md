@@ -1,5 +1,9 @@
 # ghloc — GitHub Lines of Code
 
+![Lines of Code](.ghloc/badge.svg)
+
+![LOC History](.ghloc/chart.svg)
+
 A GitHub App that automatically counts lines of code in your repositories and provides LOC badges and history charts.
 
 ## Features
