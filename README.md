@@ -98,6 +98,18 @@ If `COMMIT_ARTIFACTS=true`, a badge is committed to `.ghloc/badge.svg` in your r
 ![LOC History](https://your-domain.com/chart/owner/repo)
 ```
 
+## Privacy & Self-Hosting
+
+When you install this GitHub App, it receives **read access to your repository contents** in order to count lines of code. The app performs a shallow clone, counts LOC, and immediately deletes the clone. No source code is stored or transmitted beyond the LOC statistics saved to the app's database.
+
+That said, you are trusting the app operator with access to your code. If that's a concern — especially for private repositories — you can run your own instance:
+
+1. **Fork this repo**
+2. **Register your own GitHub App** (see [Setup](#setup) above)
+3. **Deploy it yourself** — only your server ever sees your code
+
+This is a small, self-contained Go binary with no external dependencies beyond Git and SQLite, so it's straightforward to host anywhere.
+
 ## Architecture
 
 ```
