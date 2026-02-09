@@ -1,0 +1,12 @@
+name: Lines of Code
+on:
+  push:
+    branches: [main]
+jobs:
+  loc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rjwalters/ghloc@main

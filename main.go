@@ -1,55 +1,85 @@
 package main
 
 import (
-	"context"
+	"flag"
+	"fmt"
 	"log"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
+	"path/filepath"
 	"time"
 
-	"github.com/rjwalters/ghloc/internal/config"
-	"github.com/rjwalters/ghloc/internal/server"
+	"github.com/narqo/go-badge"
+	"github.com/rjwalters/ghloc/internal/chart"
+	"github.com/rjwalters/ghloc/internal/counter"
 	"github.com/rjwalters/ghloc/internal/store"
+
+	locbadge "github.com/rjwalters/ghloc/internal/badge"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	dir := flag.String("dir", ".", "directory to count")
+	output := flag.String("output", ".ghloc", "output directory for artifacts")
+	flag.Parse()
 
-	cfg, err := config.Load()
+	log.SetFlags(0)
+
+	// 1. Count LOC
+	result, err := counter.Count(*dir)
 	if err != nil {
-		log.Fatalf("config: %v", err)
+		log.Fatalf("count: %v", err)
 	}
+	fmt.Printf("Counted %d lines of code across %d files (%d languages)\n",
+		result.TotalCode, result.TotalFiles, len(result.Languages))
 
-	db, err := store.NewSQLite(cfg.DBPath)
+	// 2. Load existing history
+	historyPath := filepath.Join(*output, "history.json")
+	history, err := store.LoadHistory(historyPath)
 	if err != nil {
-		log.Fatalf("store: %v", err)
-	}
-	defer db.Close()
-
-	srv := server.New(cfg, db)
-
-	// Graceful shutdown
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		log.Printf("starting ghloc server on %s", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server: %v", err)
-		}
-	}()
-
-	<-done
-	log.Println("shutting down...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("shutdown: %v", err)
+		log.Fatalf("load history: %v", err)
 	}
 
-	log.Println("stopped")
+	// 3. Append new snapshot
+	snap := store.Snapshot{
+		TotalLOC:   result.TotalCode,
+		TotalFiles: result.TotalFiles,
+		CreatedAt:  time.Now().UTC(),
+	}
+	for _, lang := range result.Languages {
+		snap.Languages = append(snap.Languages, store.LanguageRecord{
+			Language: lang.Language,
+			Lines:    lang.Lines,
+			Code:     lang.Code,
+			Comments: lang.Comments,
+			Blanks:   lang.Blanks,
+			Files:    lang.Files,
+		})
+	}
+	history = append(history, snap)
+
+	// 4. Ensure output directory exists
+	if err := os.MkdirAll(*output, 0755); err != nil {
+		log.Fatalf("mkdir: %v", err)
+	}
+
+	// 5. Write badge SVG
+	badgeSVG := locbadge.RenderSVG(locbadge.FormatLOC(result.TotalCode), badge.ColorBlue)
+	badgePath := filepath.Join(*output, "badge.svg")
+	if err := os.WriteFile(badgePath, badgeSVG, 0644); err != nil {
+		log.Fatalf("write badge: %v", err)
+	}
+	fmt.Printf("Wrote %s\n", badgePath)
+
+	// 6. Write chart SVG
+	chartSVG := chart.RenderHistoryChart(history)
+	chartPath := filepath.Join(*output, "chart.svg")
+	if err := os.WriteFile(chartPath, chartSVG, 0644); err != nil {
+		log.Fatalf("write chart: %v", err)
+	}
+	fmt.Printf("Wrote %s\n", chartPath)
+
+	// 7. Save updated history
+	if err := store.SaveHistory(historyPath, history); err != nil {
+		log.Fatalf("save history: %v", err)
+	}
+	fmt.Printf("Wrote %s (%d snapshots)\n", historyPath, len(history))
 }

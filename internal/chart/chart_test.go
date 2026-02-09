@@ -1,9 +1,6 @@
 package chart
 
 import (
-	"context"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -11,79 +8,38 @@ import (
 	"github.com/rjwalters/ghloc/internal/store"
 )
 
-type mockStore struct {
-	latest  *store.Snapshot
-	history []store.Snapshot
-	err     error
-}
-
-func (m *mockStore) SaveSnapshot(ctx context.Context, snap *store.Snapshot) error { return m.err }
-func (m *mockStore) GetLatest(ctx context.Context, owner, repo string) (*store.Snapshot, error) {
-	return m.latest, m.err
-}
-func (m *mockStore) GetHistory(ctx context.Context, owner, repo string) ([]store.Snapshot, error) {
-	return m.history, m.err
-}
-func (m *mockStore) Close() error { return nil }
-
-func TestHistoryHandler_WithData(t *testing.T) {
+func TestRenderHistoryChart_WithData(t *testing.T) {
 	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	s := &mockStore{
-		history: []store.Snapshot{
-			{TotalLOC: 100, CreatedAt: base},
-			{TotalLOC: 250, CreatedAt: base.Add(7 * 24 * time.Hour)},
-			{TotalLOC: 400, CreatedAt: base.Add(14 * 24 * time.Hour)},
-			{TotalLOC: 380, CreatedAt: base.Add(21 * 24 * time.Hour)},
-			{TotalLOC: 500, CreatedAt: base.Add(28 * 24 * time.Hour)},
-		},
+	snapshots := []store.Snapshot{
+		{TotalLOC: 100, CreatedAt: base},
+		{TotalLOC: 250, CreatedAt: base.Add(7 * 24 * time.Hour)},
+		{TotalLOC: 400, CreatedAt: base.Add(14 * 24 * time.Hour)},
+		{TotalLOC: 380, CreatedAt: base.Add(21 * 24 * time.Hour)},
+		{TotalLOC: 500, CreatedAt: base.Add(28 * 24 * time.Hour)},
 	}
 
-	handler := NewHistoryHandler(s)
+	svg := RenderHistoryChart(snapshots)
+	svgStr := string(svg)
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /chart/{owner}/{repo}", handler)
-
-	req := httptest.NewRequest("GET", "/chart/testowner/testrepo", nil)
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("status: got %d, want 200", w.Code)
+	if !strings.Contains(svgStr, "<svg") {
+		t.Error("output is not SVG")
 	}
-
-	ct := w.Header().Get("Content-Type")
-	if ct != "image/svg+xml" {
-		t.Errorf("Content-Type: got %q, want image/svg+xml", ct)
-	}
-
-	body := w.Body.String()
-	if !strings.Contains(body, "<svg") {
-		t.Error("response does not contain <svg")
-	}
-	if !strings.Contains(body, "Lines of Code") {
+	if !strings.Contains(svgStr, "Lines of Code") {
 		t.Error("chart missing title 'Lines of Code'")
 	}
-	if !strings.Contains(body, "<path") {
+	if !strings.Contains(svgStr, "<path") {
 		t.Error("chart missing line path")
 	}
-	if !strings.Contains(body, "<circle") {
+	if !strings.Contains(svgStr, "<circle") {
 		t.Error("chart missing data point circles")
 	}
 }
 
-func TestHistoryHandler_NoData(t *testing.T) {
-	s := &mockStore{history: nil}
-	handler := NewHistoryHandler(s)
+func TestRenderHistoryChart_NoData(t *testing.T) {
+	svg := RenderHistoryChart(nil)
+	svgStr := string(svg)
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /chart/{owner}/{repo}", handler)
-
-	req := httptest.NewRequest("GET", "/chart/testowner/testrepo", nil)
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, req)
-
-	body := w.Body.String()
-	if !strings.Contains(body, "No data yet") {
+	if !strings.Contains(svgStr, "No data yet") {
 		t.Error("empty chart should contain 'No data yet'")
 	}
 }
@@ -113,10 +69,6 @@ func TestRenderHistoryChart_LargeValues(t *testing.T) {
 	svg := RenderHistoryChart(snapshots)
 	svgStr := string(svg)
 
-	if !strings.Contains(svgStr, "M") {
-		// The axis labels should contain "M" for millions or "k" for thousands
-		t.Log("Note: axis labels may use 'k' notation for values < 1M")
-	}
 	if !strings.Contains(svgStr, "<path") {
 		t.Error("chart missing line path")
 	}

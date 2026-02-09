@@ -2,51 +2,10 @@ package badge
 
 import (
 	"bytes"
-	"net/http"
+	"fmt"
 
 	"github.com/narqo/go-badge"
-	"github.com/rjwalters/ghloc/internal/store"
 )
-
-// SVGHandler serves SVG badges directly.
-type SVGHandler struct {
-	store store.Store
-}
-
-// NewSVGHandler creates a new SVG badge handler.
-func NewSVGHandler(s store.Store) *SVGHandler {
-	return &SVGHandler{store: s}
-}
-
-// ServeHTTP handles GET /badge/{owner}/{repo}/svg requests.
-func (h *SVGHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	owner := r.PathValue("owner")
-	repo := r.PathValue("repo")
-
-	if owner == "" || repo == "" {
-		http.Error(w, "owner and repo required", http.StatusBadRequest)
-		return
-	}
-
-	snap, err := h.store.GetLatest(r.Context(), owner, repo)
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	message := "no data"
-	color := badge.ColorLightgrey
-	if snap != nil {
-		message = FormatLOC(snap.TotalLOC)
-		color = badge.ColorBlue
-	}
-
-	svg := RenderSVG(message, color)
-
-	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "max-age=300")
-	w.Write(svg)
-}
 
 // RenderSVG generates an SVG badge with the given message and color.
 func RenderSVG(message string, colors ...badge.Color) []byte {
@@ -58,4 +17,16 @@ func RenderSVG(message string, colors ...badge.Color) []byte {
 	var buf bytes.Buffer
 	badge.Render("lines of code", message, color, &buf)
 	return buf.Bytes()
+}
+
+// FormatLOC formats a LOC count for display (e.g., "12.3k", "1.5M").
+func FormatLOC(loc int64) string {
+	switch {
+	case loc >= 1_000_000:
+		return fmt.Sprintf("%.1fM", float64(loc)/1_000_000)
+	case loc >= 1_000:
+		return fmt.Sprintf("%.1fk", float64(loc)/1_000)
+	default:
+		return fmt.Sprintf("%d", loc)
+	}
 }

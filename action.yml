@@ -1,0 +1,24 @@
+name: 'Lines of Code Counter'
+description: 'Count LOC, generate badge and history chart'
+inputs:
+  directory:
+    description: 'Directory to count'
+    default: '.'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+    - run: go build -o /tmp/ghloc .
+      shell: bash
+      working-directory: ${{ github.action_path }}
+    - run: /tmp/ghloc --dir ${{ inputs.directory }}
+      shell: bash
+    - run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add .ghloc/
+        git diff --staged --quiet || git commit -m "Update LOC badge and chart [skip ci]"
+        git push
+      shell: bash
