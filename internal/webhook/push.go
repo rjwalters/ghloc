@@ -28,7 +28,8 @@ func (h *Handler) handlePush(e *github.PushEvent) error {
 	installationID := e.GetInstallation().GetID()
 
 	// Skip commits made by this app to prevent feedback loops
-	if strings.Contains(commitMsg, "[skip ci]") {
+	author := headCommit.GetAuthor().GetLogin()
+	if author == "lines-of-code-counter[bot]" || strings.HasSuffix(commitMsg, "[skip ci]") {
 		log.Printf("push: skipping app-generated commit %s", commitSHA[:8])
 		return nil
 	}
