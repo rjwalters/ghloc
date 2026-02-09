@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v68/github"
@@ -20,9 +21,17 @@ func (h *Handler) handlePush(e *github.PushEvent) error {
 	repo := e.GetRepo()
 	owner := repo.GetOwner().GetLogin()
 	repoName := repo.GetName()
-	commitSHA := e.GetHeadCommit().GetID()
+	headCommit := e.GetHeadCommit()
+	commitSHA := headCommit.GetID()
+	commitMsg := headCommit.GetMessage()
 	ref := e.GetRef()
 	installationID := e.GetInstallation().GetID()
+
+	// Skip commits made by this app to prevent feedback loops
+	if strings.Contains(commitMsg, "[skip ci]") {
+		log.Printf("push: skipping app-generated commit %s", commitSHA[:8])
+		return nil
+	}
 
 	// Look up installation ID if not present (e.g., repo webhook from gh webhook forward)
 	if installationID == 0 {
