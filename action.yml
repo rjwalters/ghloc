@@ -20,5 +20,6 @@ runs:
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add .ghloc/
         git diff --staged --quiet || git commit -m "Update LOC badge and chart [skip ci]"
+        git pull --rebase
         git push
       shell: bash
