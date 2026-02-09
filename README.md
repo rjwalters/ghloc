@@ -29,7 +29,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: rjwalters/ghloc@main
+      - uses: rjwalters/ghloc@v1
 ```
 
 Then add the badge and chart to your README:
@@ -78,7 +78,7 @@ Steps:
          contents: write
        steps:
          - uses: actions/checkout@v4
-         - uses: rjwalters/ghloc@main
+         - uses: rjwalters/ghloc@v1
 
 2. Add these two lines near the top of README.md (after the title):
 
