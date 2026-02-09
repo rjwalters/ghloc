@@ -41,6 +41,25 @@ Then add the badge and chart to your README:
 
 The images won't render until the first push to main triggers the action.
 
+### Branch Protection
+
+The action commits and pushes to `main`. If your branch has protection rules requiring pull requests, the default `GITHUB_TOKEN` won't be able to push. To fix this:
+
+1. Use **classic** branch protection (not rulesets) with **"Do not restrict administrators"** enabled
+2. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with **Contents: Read and write** scoped to your repo
+3. Add it as a repository secret (e.g., `GH_LOC_PAT`) under **Settings > Secrets > Actions**
+4. Pass the token to the checkout step:
+
+```yaml
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_LOC_PAT }}
+      - uses: rjwalters/ghloc@v1
+```
+
+If your branch has no protection rules, no extra setup is needed.
+
 ## Inputs
 
 | Input | Description | Default |
@@ -65,7 +84,11 @@ Add a lines-of-code badge and history chart to this repo using the
 ghloc GitHub Action (https://github.com/rjwalters/ghloc).
 
 Steps:
-1. Create .github/workflows/loc.yml with this content:
+1. Check if the repo has a secret named GH_LOC_PAT (look for branch
+   protection rules that require pull requests). If branch protection
+   exists, the workflow needs a PAT token to push.
+
+2. Create .github/workflows/loc.yml with this content:
 
    name: Lines of Code
    on:
@@ -80,12 +103,18 @@ Steps:
          - uses: actions/checkout@v4
          - uses: rjwalters/ghloc@v1
 
-2. Add these two lines near the top of README.md (after the title):
+   If the repo has branch protection, add a token to the checkout step:
+
+         - uses: actions/checkout@v4
+           with:
+             token: ${{ secrets.GH_LOC_PAT }}
+
+3. Add these two lines near the top of README.md (after the title):
 
    ![Lines of Code](.ghloc/badge.svg)
    ![LOC History](.ghloc/chart.svg)
 
-3. Commit and push to main.
+4. Commit and push to main.
 
 The action will run on the push, count LOC, and commit badge.svg and
 chart.svg to the .ghloc/ directory. The images will render after that
