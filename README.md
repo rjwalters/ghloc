@@ -98,6 +98,31 @@ If `COMMIT_ARTIFACTS=true`, a badge is committed to `.ghloc/badge.svg` in your r
 ![LOC History](https://your-domain.com/chart/owner/repo)
 ```
 
+## Quick Install (copy-paste for AI agents)
+
+If you're using an AI coding agent, paste this prompt to add LOC tracking to your repo:
+
+```
+Add a lines-of-code badge and history chart to this repo's README using the
+ghloc GitHub App (https://github.com/rjwalters/ghloc).
+
+Steps:
+1. Add these two lines near the top of README.md (after the title):
+
+   ![Lines of Code](.ghloc/badge.svg)
+   ![LOC History](.ghloc/chart.svg)
+
+2. Commit and push the change.
+
+The ghloc app is already installed on this account. On the next push it will
+automatically count LOC and commit badge.svg and chart.svg to the .ghloc/
+directory. The images won't render until the first webhook fires, which happens
+on the push you just made.
+```
+
+If the app is not yet installed on your account, install it first at:
+https://github.com/apps/lines-of-code-counter
+
 ## Privacy & Self-Hosting
 
 When you install this GitHub App, it receives **read access to your repository contents** in order to count lines of code. The app performs a shallow clone, counts LOC, and immediately deletes the clone. No source code is stored or transmitted beyond the LOC statistics saved to the app's database.
