@@ -1,9 +1,12 @@
 package ghapp
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	"github.com/google/go-github/v68/github"
 )
 
 // NewAppTransport creates an http.RoundTripper that authenticates as a GitHub App.
@@ -36,4 +39,20 @@ func InstallationToken(appID int64, installationID int64, privateKeyPath string)
 		return "", err
 	}
 	return token, nil
+}
+
+// FindInstallationID looks up the installation ID for a given repo by
+// authenticating as the App (JWT) and querying the GitHub API.
+func FindInstallationID(ctx context.Context, appID int64, privateKeyPath, owner, repo string) (int64, error) {
+	tr, err := NewAppTransport(appID, privateKeyPath)
+	if err != nil {
+		return 0, fmt.Errorf("app transport: %w", err)
+	}
+	client := github.NewClient(&http.Client{Transport: tr})
+
+	install, _, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
+	if err != nil {
+		return 0, fmt.Errorf("find installation for %s/%s: %w", owner, repo, err)
+	}
+	return install.GetID(), nil
 }

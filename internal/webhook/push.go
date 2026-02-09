@@ -24,6 +24,17 @@ func (h *Handler) handlePush(e *github.PushEvent) error {
 	ref := e.GetRef()
 	installationID := e.GetInstallation().GetID()
 
+	// Look up installation ID if not present (e.g., repo webhook from gh webhook forward)
+	if installationID == 0 {
+		ctx := context.Background()
+		id, err := ghapp.FindInstallationID(ctx, h.config.AppID, h.config.PrivateKeyPath, owner, repoName)
+		if err != nil {
+			return fmt.Errorf("find installation: %w", err)
+		}
+		installationID = id
+		log.Printf("push: resolved installation ID %d for %s/%s", installationID, owner, repoName)
+	}
+
 	// Only process pushes to the default branch
 	defaultBranch := repo.GetDefaultBranch()
 	if defaultBranch == "" {
