@@ -1,5 +1,8 @@
 name: 'Lines of Code Counter'
 description: 'Count LOC, generate badge and history chart'
+branding:
+  icon: 'bar-chart-2'
+  color: 'blue'
 inputs:
   directory:
     description: 'Directory to count'
