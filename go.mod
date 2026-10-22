@@ -1,6 +1,6 @@
 module github.com/rjwalters/ghloc
 
-go 1.25.7
+go 1.26.10
 
 require (
 	github.com/boyter/scc/v3 v3.6.0
